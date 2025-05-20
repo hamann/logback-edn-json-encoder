@@ -18,7 +18,7 @@
     (compile 'logback.edn-json-encoder))
   (println "Compilation completed"))
 
-(import '[edn_json EdnToJsonEncoder])
+(import '[logback EdnToJsonEncoder])
 
 (defn create-test-event
   "Erstellt ein einfaches LoggingEvent für Tests"
