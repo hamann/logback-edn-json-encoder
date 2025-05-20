@@ -1,0 +1,75 @@
+{:min-bb-version "1.3.0"
+ :tasks
+ {:requires ([babashka.fs :as fs]
+             [babashka.process :as p])
+
+  clean
+  {:doc "Clean target directory"
+   :task (do
+           (println "Cleaning target directory...")
+           (when (fs/exists? "target")
+             (fs/delete-tree "target"))
+           (println "✓ Clean completed"))}
+
+  compile
+  {:doc "Compile Clojure to Java classes"
+   :depends [clean]
+   :task (do
+           (println "Compiling Clojure classes...")
+           (fs/create-dirs "target/classes")
+           (p/shell "clojure" "-T:build" "compile-clj")
+           (println "✓ Compilation completed"))}
+
+  jar
+  {:doc "Build JAR file"
+   :task (do
+           (println "Building JAR...")
+           (fs/create-dirs "target")
+           (p/shell "clojure" "-T:build" "jar")
+           (println "✓ JAR created"))}
+
+  build
+  {:doc "Full build: clean, compile, jar"
+   :depends [clean compile jar]
+   :task (println "✓ Build completed successfully!")}
+
+  test
+  {:doc "Run tests"
+   :task (do
+           (println "Running tests...")
+           (let [result (p/shell {:out :inherit :err :inherit}
+                                 "clojure" "-M:test")]
+             (when (not= 0 (:exit result))
+               (throw (ex-info "Tests failed" result))))
+           (println "✓ All tests passed"))}
+
+  lint
+  {:doc "Run clj-kondo linting"
+   :task (do
+           (println "Running clj-kondo...")
+           (try
+             (let [result (p/shell {:continue true}
+                                   "clj-kondo" "--lint" "src" "test")]
+               (when (not= 0 (:exit result))
+                 (throw (ex-info "Linting failed" result))))
+             (println "✓ clj-kondo passed")
+             (catch java.io.IOException e
+               (println "⚠ clj-kondo not installed. Install with:")
+               (println "  brew install clj-kondo")
+               (throw e))))}
+
+  lint-fix
+  {:doc "Auto-fix clj-kondo issues where possible"
+   :task (do
+           (println "Running clj-kondo with auto-fix...")
+           (p/shell "clj-kondo" "--lint" "src" "test" "--auto-fix")
+           (println "✓ Auto-fixes applied"))}
+
+  dev
+  {:doc "Start REPL for development"
+   :task (p/shell "clojure" "-M:repl/cider")}
+
+  ci
+  {:doc "CI pipeline: check + build + test"
+   :depends [build test]
+   :task (println "✓ CI pipeline completed successfully!")}}}

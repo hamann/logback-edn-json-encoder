@@ -1,0 +1,31 @@
+<configuration>
+    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+        <url>${LOKI_URL:-http://localhost:3100/loki/api/v1/push}</url>
+
+        <batchMaxItems>1000</batchMaxItems>
+        <batchMaxBytes>4194304</batchMaxBytes>
+        <batchTimeoutMs>60000</batchTimeoutMs>
+
+        <httpTimeoutMs>30000</httpTimeoutMs>
+
+        <format>
+            <label>
+                <pattern>app=datomic,host=${HOSTNAME:-unknown},env=${ENV:-dev}</pattern>
+            </label>
+            <message>
+                <pattern>%msg</pattern>
+            </message>
+        </format>
+
+        <encoder class="logback.EdnToJsonEncoder" />
+    </appender>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="logback.EdnToJsonEncoder" />
+    </appender>
+
+    <root level="${ROOT_LOG_LEVEL:-WARN}">
+        <appender-ref ref="${LOG_APPENDER:-LOKI}" />
+    </root>
+</configuration>
+

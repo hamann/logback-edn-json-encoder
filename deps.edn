@@ -1,0 +1,18 @@
+{:paths ["src" "resources"]
+
+ :deps {org.clojure/clojure {:mvn/version "1.11.1"}
+        ch.qos.logback/logback-classic {:mvn/version "1.4.14"}
+        com.github.loki4j/loki-logback-appender {:mvn/version "1.5.0"}
+        cheshire/cheshire {:mvn/version "5.12.0"}}
+
+ :aliases {:build {:deps {io.github.clojure/tools.build {:mvn/version "0.10.9"}}
+                   :ns-default build}
+
+           :test {:extra-paths ["test" "target/classes"]
+                  :extra-deps {lambdaisland/kaocha {:mvn/version "1.87.1366"}
+                               lambdaisland/kaocha-cloverage {:mvn/version "1.1.89"}}
+                  :main-opts ["-m" "kaocha.runner"]}
+
+           :repl/cider {:extra-deps {nrepl/nrepl {:mvn/version "1.0.0"}
+                                     cider/cider-nrepl {:mvn/version "0.42.1"}}
+                        :main-opts ["-m" "nrepl.cmdline" "--middleware" "[cider.nrepl/cider-middleware]"]}}}

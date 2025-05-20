@@ -1,0 +1,8 @@
+.clj-kondo/.cache/*
+.clj-kondo/imports/*
+.cpcache
+.lsp
+.direnv
+.nrepl-port
+target/
+

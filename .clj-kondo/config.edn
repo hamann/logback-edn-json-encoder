@@ -1,0 +1,18 @@
+{:output {:pattern "::{{level}} file={{filename}},line={{row}},col={{col}}::{{message}}"}
+ :linters {:unused-namespace {:level :error}
+           :unused-referred-var {:level :error}
+           :unused-private-var {:exclude [(logback.edn-json-encoder/-init)] :level :warning}
+           :unresolved-symbol {:level :error
+                               :exclude [clojure.core]}
+           :unresolved-namespace {:exclude [logback.edn-json-encoder] :level :error}
+           :type-mismatch {:level :error}
+           :invalid-arity {:level :error}
+           :not-a-function {:level :error}
+           :unused-binding {:level :warning}
+           :unreachable-code {:level :warning}
+           :redundant-let {:level :warning}
+           :redundant-do {:level :warning}
+           :single-logical-operand {:level :warning}
+           :format {:level :error}
+           :redundant-ignore {:exclude [:clojure-lsp/unused-public-var]}}
+ :hooks {:analyze-call {}} }
