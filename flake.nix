@@ -1,5 +1,6 @@
 {
   inputs.flake-utils.url = "github:numtide/flake-utils";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-24.05";
   outputs = {
     nixpkgs,
     flake-utils,
@@ -16,6 +17,8 @@
           graalvm-ce
           babashka
           (clojure.override {jdk = graalvm-ce;})
+          grafana-loki
+          grafana
         ];
       };
     });

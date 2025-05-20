@@ -72,4 +72,24 @@
   ci
   {:doc "CI pipeline: check + build + test"
    :depends [build test]
-   :task (println "✓ CI pipeline completed successfully!")}}}
+   :task (println "✓ CI pipeline completed successfully!")}
+
+  loki
+  {:doc "Starts a local loki instance for testing"
+   :task (p/shell "loki" "-config.file=config/loki.yaml")}
+
+  grafana
+  {:doc "Starts a local grafana instance for testing"
+   :task (let [base-path (-> (fs/which "grafana") fs/parent fs/parent)
+               conf "./tmp/grafana/conf"
+               public "./tmp/grafana/public"
+               loki-ds "./tmp/grafana/provisioning/datasources/loki.yaml"]
+           ;; assume nix setup
+           (fs/create-dirs "./tmp/grafana/provisioning/datasources")
+           (when-not (fs/exists? conf)
+             (fs/create-sym-link conf (str base-path "/share/grafana/conf")))
+           (when-not (fs/exists? public)
+             (fs/create-sym-link public (str base-path "/share/grafana/public")))
+           (when-not (fs/exists? loki-ds)
+             (fs/create-sym-link loki-ds (fs/absolutize "./config/provisioning-loki.yaml")))
+           (p/shell "grafana" "server" "-homepath" "./tmp/grafana" "-config" "./config/grafana.ini"))}}}
