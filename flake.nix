@@ -19,6 +19,7 @@
           (clojure.override {jdk = graalvm-ce;})
           grafana-loki
           grafana
+          promtail
         ];
       };
     });

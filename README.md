@@ -42,7 +42,7 @@ Create a `logback.xml` file in the config directory:
 <configuration debug="false">
     <!-- Console appender for local development -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder class="edn_json.EdnToJsonEncoder" />
+        <encoder class="logback.EdnToJsonEncoder" />
     </appender>
     
     <!-- Root logger -->
