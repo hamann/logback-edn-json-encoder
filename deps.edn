@@ -2,7 +2,6 @@
 
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
         ch.qos.logback/logback-classic {:mvn/version "1.4.14"}
-        com.github.loki4j/loki-logback-appender {:mvn/version "1.5.0"}
         cheshire/cheshire {:mvn/version "5.12.0"}}
 
  :aliases {:build {:deps {io.github.clojure/tools.build {:mvn/version "0.10.7"}}

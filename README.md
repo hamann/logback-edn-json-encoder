@@ -13,7 +13,6 @@ Logs in EDN format aren't easily parsed by log aggregation systems like Loki. Th
 - **Exception Handling**: Preserves exception information with stack traces
 - **Time Format Standardization**: Converts all timestamp types to ISO-8601 format
 - **Preserves Original Data**: Option to keep original EDN for reference (configurable)
-- **Direct Loki Integration**: Works with loki4j for optimal log shipping
 
 ## Installation
 
@@ -46,31 +45,9 @@ Create a `logback.xml` file in the config directory:
         <encoder class="edn_json.EdnToJsonEncoder" />
     </appender>
     
-    <!-- loki4j appender for production -->
-    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
-        <url>${LOKI_URL:-http://localhost:3100/loki/api/v1/push}</url>
-        
-        <!-- Batching for performance -->
-        <batchMaxItems>1000</batchMaxItems>
-        <batchTimeoutMs>60000</batchTimeoutMs>
-        
-        <!-- Format configuration -->
-        <format>
-            <label>
-                <pattern>app=datomic,host=${HOSTNAME:-unknown},env=${ENV:-dev}</pattern>
-            </label>
-            <message>
-                <pattern>%msg</pattern>
-            </message>
-        </format>
-        
-        <!-- Use our custom encoder for EDN-to-JSON conversion -->
-        <encoder class="logback.EdnToJsonEncoder" />
-    </appender>
-
     <!-- Root logger -->
     <root level="${ROOT_LOG_LEVEL:-WARN}">
-        <appender-ref ref="${LOG_APPENDER:-LOKI}" />
+        <appender-ref ref="${LOG_APPENDER:-CONSOLE}" />
     </root>
 </configuration>
 ```
