@@ -194,7 +194,7 @@
             (is (pos? (count causes)) "Should have at least one cause")
             (let [first-cause (first causes)]
               (is (= "java.lang.RuntimeException" (:class first-cause)) "First cause should be RuntimeException")
-              (is (= "Operation failed" (:message first-cause)) "First cause message should match")))))))
+              (is (= "Operation failed" (:message first-cause)) "First cause message should match"))))))))
 
 (deftest encoder-handles-full-exception-chain-test
   (testing "Full exception chain mode captures all causes"
@@ -232,7 +232,7 @@
             (is (= "Unsupported operation" (get-in ex [:causes 1 :message])))
 
             (is (= "java.lang.IllegalArgumentException" (get-in ex [:causes 2 :class])))
-            (is (= "Invalid argument" (get-in ex [:causes 2 :message])))))))))
+            (is (= "Invalid argument" (get-in ex [:causes 2 :message]))))))))
 
 (deftest encoder-handles-exception-in-mdc-test
   (testing "Encoder handles exceptions with EDN in MDC"
@@ -294,3 +294,51 @@
           (is (string? instant-str))
           (is (re-matches #"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z" instant-str)
               (str "Instant should be in ISO format, was: " instant-str)))))))
+
+(deftest preserve-originals-config-test
+  (testing "preserveOriginals property controls original EDN preservation"
+    (let [encoder (EdnToJsonEncoder.)
+          logger-context (LoggerContext.)
+          mdc-data {"user-id" "12345"
+                    "user-data" "{:name \"Alice\" :age 30}"}
+          event (create-test-event-with-mdc "test" Level/INFO
+                                           "{:message \"Test with config\" :data 42}"
+                                           mdc-data)]
+
+      (.setContext encoder logger-context)
+
+      ;; Test with preserveOriginals = false (default)
+      (.start encoder)
+
+      (let [encoded-bytes (.encode encoder event)
+            json-str (String. encoded-bytes "UTF-8")
+            parsed (json/parse-string json-str keyword)]
+
+        (is (not (contains? parsed :_original_mdc))
+            "Should not contain _original_mdc when preserveOriginals is false")
+
+        (is (not (contains? parsed :_original_message))
+            "Should not contain _original_message when preserveOriginals is false"))
+
+      ;; Test with preserveOriginals = true
+      (.stop encoder) ;; Stop the encoder before changing configuration
+      (.setPreserveOriginals encoder true)
+      (.start encoder) ;; Restart with new configuration
+
+      (let [encoded-bytes (.encode encoder event)
+            json-str (String. encoded-bytes "UTF-8")
+            parsed (json/parse-string json-str keyword)]
+
+        (is (contains? parsed :_original_mdc)
+            "Should contain _original_mdc when preserveOriginals is true")
+
+        (is (contains? parsed :_original_message)
+            "Should contain _original_message when preserveOriginals is true")
+
+        (is (= "{:message \"Test with config\" :data 42}" (:_original_message parsed))
+            "Original message should be preserved correctly")
+
+        ;; Verify the original MDC values
+        (let [original-mdc (:_original_mdc parsed)]
+          (is (= "12345" (:user-id original-mdc)))
+          (is (= "{:name \"Alice\" :age 30}" (:user-data original-mdc))))))))

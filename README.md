@@ -10,8 +10,6 @@ Logs in EDN format aren't easily parsed by log aggregation systems like Loki. Th
 
 - **EDN-to-JSON Conversion**: Automatically parses EDN-formatted log messages into structured JSON
 - **MDC Support**: Extracts and parses EDN data from the Mapped Diagnostic Context
-- **Exception Handling**: Preserves complete exception chains with all causes and stack traces
-- **Time Format Standardization**: Converts all timestamp types to ISO-8601 format
 - **Preserves Original Data**: Option to keep original EDN for reference (configurable)
 
 ## Installation
@@ -42,7 +40,10 @@ Create a `logback.xml` file in the config directory:
 <configuration debug="false">
     <!-- Console appender for local development -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder class="logback.EdnToJsonEncoder" />
+        <encoder class="logback.EdnToJsonEncoder">
+            <!-- Optional: Set to true to preserve original EDN in output -->
+            <preserveOriginals>false</preserveOriginals>
+        </encoder>
     </appender>
     
     <!-- Root logger -->
@@ -80,56 +81,25 @@ The encoder generates JSON logs in this format:
 
 #### Preserve Original EDN
 
-When `-Dlogback.edn-json-encoder.preserve-originals=true` is set, it also includes:
+You can enable preservation of original EDN values in the logback.xml configuration:
+
+```xml
+<encoder class="logback.EdnToJsonEncoder">
+    <preserveOriginals>true</preserveOriginals>
+</encoder>
+```
+
+When enabled, the encoder includes the original values in the output:
 
 ```json
 {
-  "_original_edn": "{:tx-id 12345 :operation :commit :entities [:user :account :preference]}",
+  "_original_message": "{:tx-id 12345 :operation :commit :entities [:user :account :preference]}",
   "_original_mdc": {
     "user-id": "789",
     "session-data": "{:role :admin :team :eng}"
   }
 }
 ```
-
-#### Full Exception Chain
-
-The encoder always captures the full exception chain with all causes and stack traces, providing complete visibility into exception hierarchies.
-
-The exception format looks like:
-
-```json
-{
-  "exception": {
-    "exception_class": "java.lang.Exception",
-    "exception_message": "Transaction rollback",
-    "stack_trace": [
-      "com.example.TransactionManager.commit(TransactionManager.java:123)",
-      "..."
-    ],
-    "causes": [
-      {
-        "class": "java.lang.RuntimeException",
-        "message": "Operation failed",
-        "stack_trace": [
-          "com.example.OperationExecutor.execute(OperationExecutor.java:45)",
-          "..."
-        ]
-      },
-      {
-        "class": "java.lang.IllegalArgumentException",
-        "message": "Invalid argument",
-        "stack_trace": [
-          "com.example.Validator.validate(Validator.java:22)",
-          "..."
-        ]
-      }
-    ]
-  }
-}
-```
-
-This format ensures that when exceptions occur, you have full visibility into the entire cause chain, making it easier to diagnose problems in complex systems.
 
 ## Loki/Grafana Queries
 

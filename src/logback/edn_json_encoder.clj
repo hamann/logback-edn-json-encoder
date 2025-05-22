@@ -11,7 +11,9 @@
 (gen-class
   :name logback.EdnToJsonEncoder
   :extends ch.qos.logback.core.encoder.EncoderBase
-  :methods [[encode [ch.qos.logback.classic.spi.ILoggingEvent] "[B"]]
+  :methods [[encode [ch.qos.logback.classic.spi.ILoggingEvent] "[B"]
+            [isPreserveOriginals [] Boolean]
+            [setPreserveOriginals [Boolean] void]]
   :init init
   :state state)
 
@@ -23,11 +25,6 @@
 (def iso-formatter DateTimeFormatter/ISO_INSTANT)
 (def iso-local-formatter DateTimeFormatter/ISO_LOCAL_DATE_TIME)
 (def iso-zoned-formatter DateTimeFormatter/ISO_ZONED_DATE_TIME)
-
-(def ^:dynamic *preserve-originals*
-  (Boolean/parseBoolean (System/getProperty "logback.edn-json-encoder.preserve-originals" "false")))
-
-;; Always use full exception chain
 
 (defn prepare-for-json
   "Converts some problematic java types"
@@ -133,22 +130,24 @@
   "Gets MDC context and parses it"
   [event preserve-originals?]
   (try
-    (when-let [mdc (.getMDCPropertyMap event)]
+    (when-let [mdc-map (.getMDCPropertyMap event)]
       (let [parsed-mdc (reduce-kv
                          (fn [acc k v] (assoc acc (keyword k) (parse-edn-value-safely v)))
                          {}
-                         mdc)]
-       (cond-> {:parsed parsed-mdc}
-         preserve-originals? (assoc :original (into {} mdc)))))
-      (catch Exception _e
-       nil)))
+                         mdc-map)
+            original-mdc (when preserve-originals?
+                           (into {} mdc-map))]
+        {:parsed parsed-mdc
+         :original original-mdc}))
+    (catch Exception _e
+      nil)))
 
 (defn -doEncode
   "Encode a LoggingEvent to JSON bytes"
   [this event]
   (when (.isStarted this)
     (try
-      (let [preserve-originals? *preserve-originals*
+      (let [preserve-originals? (:preserve-originals @(.state this))
             original-message (.getFormattedMessage event)
             parsed-message (parse-edn-safely original-message)
             mdc-result (safe-get-mdc-with-edn-parsing event preserve-originals?)
@@ -165,6 +164,11 @@
                            (and preserve-originals? mdc-result (:original mdc-result))
                            (assoc :_original_mdc (:original mdc-result))
 
+                           (and preserve-originals?
+                                (string? original-message)
+                                (:edn_parsed parsed-message))
+                           (assoc :_original_message original-message)
+
                            exception-info
                            (assoc :exception exception-info))
             json-ready-data (prepare-for-json enriched-data)
@@ -180,3 +184,10 @@
 (defn -headerBytes [_this] (byte-array 0))
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn -footerBytes [_this] (byte-array 0))
+
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn -isPreserveOriginals [this]
+  (:preserve-originals @(.state this)))
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn -setPreserveOriginals [this value]
+  (swap! (.state this) assoc :preserve-originals value))
