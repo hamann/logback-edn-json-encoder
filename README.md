@@ -10,7 +10,7 @@ Logs in EDN format aren't easily parsed by log aggregation systems like Loki. Th
 
 - **EDN-to-JSON Conversion**: Automatically parses EDN-formatted log messages into structured JSON
 - **MDC Support**: Extracts and parses EDN data from the Mapped Diagnostic Context
-- **Exception Handling**: Preserves exception information with stack traces
+- **Exception Handling**: Preserves complete exception chains with all causes and stack traces
 - **Time Format Standardization**: Converts all timestamp types to ISO-8601 format
 - **Preserves Original Data**: Option to keep original EDN for reference (configurable)
 
@@ -72,22 +72,13 @@ The encoder generates JSON logs in this format:
       "role": "admin",
       "team": "eng"
     }
-  },
-  "exception": {
-    "exception_class": "datomic.TransactionException",
-    "exception_message": "Transaction validation failed",
-    "stack_trace": [
-      "datomic.tx.Validator.validate(Validator.java:42)",
-      "datomic.tx.Manager.commit(Manager.java:156)",
-      "..."
-    ],
-    "cause": {
-      "class": "java.lang.IllegalArgumentException", 
-      "message": "Entity ID cannot be null"
-    }
   }
 }
 ```
+
+### Configuration Options
+
+#### Preserve Original EDN
 
 When `-Dlogback.edn-json-encoder.preserve-originals=true` is set, it also includes:
 
@@ -100,6 +91,45 @@ When `-Dlogback.edn-json-encoder.preserve-originals=true` is set, it also includ
   }
 }
 ```
+
+#### Full Exception Chain
+
+The encoder always captures the full exception chain with all causes and stack traces, providing complete visibility into exception hierarchies.
+
+The exception format looks like:
+
+```json
+{
+  "exception": {
+    "exception_class": "java.lang.Exception",
+    "exception_message": "Transaction rollback",
+    "stack_trace": [
+      "com.example.TransactionManager.commit(TransactionManager.java:123)",
+      "..."
+    ],
+    "causes": [
+      {
+        "class": "java.lang.RuntimeException",
+        "message": "Operation failed",
+        "stack_trace": [
+          "com.example.OperationExecutor.execute(OperationExecutor.java:45)",
+          "..."
+        ]
+      },
+      {
+        "class": "java.lang.IllegalArgumentException",
+        "message": "Invalid argument",
+        "stack_trace": [
+          "com.example.Validator.validate(Validator.java:22)",
+          "..."
+        ]
+      }
+    ]
+  }
+}
+```
+
+This format ensures that when exceptions occur, you have full visibility into the entire cause chain, making it easier to diagnose problems in complex systems.
 
 ## Loki/Grafana Queries
 

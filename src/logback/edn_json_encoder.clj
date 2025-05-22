@@ -27,6 +27,8 @@
 (def ^:dynamic *preserve-originals*
   (Boolean/parseBoolean (System/getProperty "logback.edn-json-encoder.preserve-originals" "false")))
 
+;; Always use full exception chain
+
 (defn prepare-for-json
   "Converts some problematic java types"
   [data]
@@ -56,20 +58,36 @@
        :else x))
    data))
 
+(defn extract-full-exception-chain
+  "Extracts complete exception chain with all causes and stack traces"
+  [throwable-proxy]
+  (loop [current throwable-proxy
+         chain []
+         visited #{}]
+    (if (and current (not (contains? visited (.getClassName current))))
+      (let [class-name (.getClassName current)
+            exception-info {:class class-name
+                            :message (.getMessage current)
+                            :stack_trace (->> (.getStackTraceElementProxyArray current)
+                                            (map #(str (.toString (.getStackTraceElement %))))
+                                            vec)}]
+        (recur (.getCause current)
+               (conj chain exception-info)
+               (conj visited class-name)))
+      chain)))
+
 (defn extract-exception-info
-  "Extracts exception information"
+  "Extracts exception information with full stack traces"
   [^ILoggingEvent event]
-  (when-let [throwable (.getThrowableProxy event)]
+  (when-let [throwable-proxy (.getThrowableProxy event)]
     (try
-      {:exception_class (.getClassName throwable)
-       :exception_message (.getMessage throwable)
-       :stack_trace (->> (.getStackTraceElementProxyArray throwable)
-                        (take 10)
-                        (map #(str (.toString (.getStackTraceElement %))))
-                        vec)
-       :cause (when-let [cause (.getCause throwable)]
-                {:class (.getClassName cause)
-                 :message (.getMessage cause)})}
+      (let [chain (extract-full-exception-chain throwable-proxy)
+            primary (first chain)
+            causes (rest chain)]
+        (cond-> {:exception_class (:class primary)
+                 :exception_message (:message primary)
+                 :stack_trace (:stack_trace primary)}
+          (seq causes) (assoc :causes causes)))
       (catch Exception e
         {:exception_error (.getMessage e)}))))
 
