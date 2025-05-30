@@ -135,4 +135,4 @@
                    (println "✓ Successfully published to Maven repository!")
                    (do
                      (println "✗ Publication failed. Check your credentials and network connection.")
-                     (throw (ex-info "Publication failed" result))))))))}}}}
+                     (throw (ex-info "Publication failed" result))))))))}}}
