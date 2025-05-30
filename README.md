@@ -202,7 +202,7 @@ This project includes a `bb publish` task for publishing to Maven repositories (
 4. **Update project metadata** in `build.clj` if needed:
    - `group-id` and `artifact-id` (currently `com.github.hamann/edn-json-encoder`)
    - `version` (currently `0.1.1`)
-   - `url` and SCM URLs (currently pointing to `github.com/hamann/edn-to-json-encoder`)
+   - `url` and SCM URLs (currently pointing to `github.com/hamann/logback-edn-to-json-encoder`)
    - Developer information
 
 ### Publishing
