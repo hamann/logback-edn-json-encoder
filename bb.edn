@@ -1,7 +1,8 @@
 {:min-bb-version "1.3.0"
  :tasks
  {:requires ([babashka.fs :as fs]
-             [babashka.process :as p])
+             [babashka.process :as p]
+             [cheshire.core :as json])
 
   clean
   {:doc "Clean target directory"
@@ -95,18 +96,39 @@
            (p/shell "grafana" "server" "-homepath" "./tmp/grafana" "-config" "./config/grafana.ini"))}
 
   publish
-  {:doc "Build and publish to Maven repository"
+  {:doc "Build and publish to Maven repository using SOPS-encrypted credentials"
    :depends [build]
    :task (do
            (println "Publishing to Maven repository...")
-           (println "Make sure you have set the following environment variables:")
-           (println "  CLOJARS_USERNAME - Your Clojars username")
-           (println "  CLOJARS_PASSWORD - Your Clojars password/token")
-           (println "")
-           (let [result (p/shell {:continue true}
-                                 "clojure" "-X:deploy" ":artifact" "target/edn-json-encoder-0.1.0.jar")]
-             (if (= 0 (:exit result))
-               (println "✓ Successfully published to Maven repository!")
-               (do
-                 (println "✗ Publication failed. Please check your credentials and try again.")
-                 (throw (ex-info "Publication failed" result))))))}}}}
+           (println "Decrypting credentials from SOPS...")
+
+           ;; Check if secrets file exists
+           (when-not (fs/exists? "secrets.yaml")
+             (throw (ex-info "secrets.yaml not found. Please create and encrypt it with SOPS." {})))
+
+           ;; Decrypt secrets using SOPS
+           (let [secrets-result (p/shell {:out :string :continue true} "sops" "-d" "--output-type" "json" "secrets.yaml")]
+             (when (not= 0 (:exit secrets-result))
+               (throw (ex-info "Failed to decrypt secrets with SOPS. Check your keys." secrets-result)))
+
+             ;; Parse the decrypted JSON
+             (let [secrets-content (:out secrets-result)
+                   {:keys [clojars]} (json/parse-string secrets-content keyword)
+                   username (:username clojars)
+                   password (:password clojars)]
+
+               (when (or (not username) (not password))
+                 (throw (ex-info "Could not extract username/password from secrets.yaml :clojars map" {})))
+
+               (println "✓ Credentials decrypted successfully")
+
+               ;; Set environment variables and run deploy
+               (let [result (p/shell {:continue true
+                                      :extra-env {"CLOJARS_USERNAME" username
+                                                  "CLOJARS_PASSWORD" password}}
+                                     "clojure" "-X:deploy" ":artifact" "target/edn-json-encoder-0.1.0.jar")]
+                 (if (= 0 (:exit result))
+                   (println "✓ Successfully published to Maven repository!")
+                   (do
+                     (println "✗ Publication failed. Check your credentials and network connection.")
+                     (throw (ex-info "Publication failed" result))))))))}}}}

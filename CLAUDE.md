@@ -38,7 +38,7 @@ bb dev
 # Run CI pipeline (build + test)
 bb ci
 
-# Build and publish to Maven repository
+# Build and publish to Maven repository (requires SOPS-encrypted secrets.yaml)
 bb publish
 ```
 

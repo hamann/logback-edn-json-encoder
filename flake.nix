@@ -20,6 +20,7 @@
           grafana-loki
           grafana
           promtail
+          sops
         ];
       };
     });

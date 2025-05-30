@@ -177,13 +177,29 @@ This project includes a `bb publish` task for publishing to Maven repositories (
    - Create account at [clojars.org](https://clojars.org)
    - Generate a deploy token in your account settings
 
-2. **Set environment variables:**
+2. **Set up SOPS for credential management:**
    ```bash
-   export CLOJARS_USERNAME=your-username
-   export CLOJARS_PASSWORD=your-deploy-token
+   # Generate age key (recommended) or use existing GPG key
+   age-keygen -o ~/.config/sops/age/keys.txt
+   
+   # Update .sops.yaml with your age public key
+   # (The public key is printed when you generate it)
    ```
 
-3. **Update project metadata** in `build.clj` if needed:
+3. **Create encrypted secrets file:**
+   ```bash
+   # Create secrets file with your credentials
+   cat > secrets.yaml << EOF
+   clojars:
+     username: your-clojars-username
+     password: your-clojars-deploy-token
+   EOF
+   
+   # Encrypt with SOPS (safe to commit)
+   sops -e -i secrets.yaml
+   ```
+
+4. **Update project metadata** in `build.clj` if needed:
    - `group-id` and `artifact-id` (currently `com.github.hamann/edn-json-encoder`)
    - `version` (currently `0.1.0`)
    - `url` and SCM URLs (currently pointing to `github.com/hamann/edn-to-json-encoder`)
@@ -198,8 +214,9 @@ bb publish
 
 The publish task will:
 1. Build the project (`bb build`)
-2. Generate proper pom.xml with metadata
-3. Upload to the configured Maven repository
+2. Decrypt credentials using SOPS
+3. Generate proper pom.xml with metadata
+4. Upload to the configured Maven repository using decrypted credentials
 
 ### Using the Published Library
 

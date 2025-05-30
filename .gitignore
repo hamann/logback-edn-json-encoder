@@ -7,4 +7,15 @@
 target/
 tmp/
 
+# SOPS - never commit decrypted secrets
+secrets.yaml.dec
+secrets-*.yaml.dec
+*.dec.yaml
+*.dec.yml
+
+# Age keys - keep private
+.age/
+age.key
+keys.txt
+
 **/.claude/settings.local.json
