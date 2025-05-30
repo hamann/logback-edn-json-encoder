@@ -24,12 +24,14 @@ cd logback-edn-json-encoder
 # Build the JAR
 bb build
 
-# The encoder JAR will be in target/logback.edn-json-encoder-0.1.0.jar
+# The encoder JAR will be in target/edn-json-encoder-0.1.0.jar
 ```
 
 ### 2. Add to deps.end
 
-TODO
+```clojure
+{:deps {com.github.hamann/edn-json-encoder {:mvn/version "0.1.0"}}}
+```
 
 ### 3. Configure Logback
 
@@ -40,7 +42,7 @@ Create a `logback.xml` file in the config directory:
 <configuration debug="false">
     <!-- Console appender for local development -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder class="logback.EdnToJsonEncoder">
+        <encoder class="com.github.hamann.EdnToJsonEncoder">
             <!-- Optional: Set to true to preserve original EDN in output -->
             <preserveOriginals>false</preserveOriginals>
         </encoder>
@@ -84,7 +86,7 @@ The encoder generates JSON logs in this format:
 You can enable preservation of original EDN values in the logback.xml configuration:
 
 ```xml
-<encoder class="logback.EdnToJsonEncoder">
+<encoder class="com.github.hamann.EdnToJsonEncoder">
     <preserveOriginals>true</preserveOriginals>
 </encoder>
 ```
@@ -154,6 +156,60 @@ A `flake.nix` is provided for reproducible development environments:
 # Start a development shell
 nix develop
 ```
+
+## License
+
+This project is licensed under the Eclipse Public License 2.0 - see the [LICENSE](LICENSE) file for details.
+
+The EPL-2.0 is a copyleft license that:
+- Allows commercial use and distribution
+- Requires modifications to EPL-licensed files to be shared under the same license
+- Includes patent protection for contributors
+- Is compatible with GPL v2+ and business-friendly for larger applications
+
+## Publishing to Maven
+
+This project includes a `bb publish` task for publishing to Maven repositories (like Clojars). Before publishing:
+
+### Prerequisites
+
+1. **Set up Clojars account** (or your preferred Maven repository)
+   - Create account at [clojars.org](https://clojars.org)
+   - Generate a deploy token in your account settings
+
+2. **Set environment variables:**
+   ```bash
+   export CLOJARS_USERNAME=your-username
+   export CLOJARS_PASSWORD=your-deploy-token
+   ```
+
+3. **Update project metadata** in `build.clj` if needed:
+   - `group-id` and `artifact-id` (currently `com.github.hamann/edn-json-encoder`)
+   - `version` (currently `0.1.0`)
+   - `url` and SCM URLs (currently pointing to `github.com/hamann/edn-to-json-encoder`)
+   - Developer information
+
+### Publishing
+
+```bash
+# Build and publish to Maven repository
+bb publish
+```
+
+The publish task will:
+1. Build the project (`bb build`)
+2. Generate proper pom.xml with metadata
+3. Upload to the configured Maven repository
+
+### Using the Published Library
+
+Once published, users can add it to their `deps.edn`:
+
+```clojure
+{:deps {com.github.hamann/edn-json-encoder {:mvn/version "0.1.0"}}}
+```
+
+Or include the JAR in their Java classpath for Logback configuration.
 
 ## Contributing
 

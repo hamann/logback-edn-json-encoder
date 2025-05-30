@@ -92,4 +92,21 @@
              (fs/create-sym-link public (str base-path "/share/grafana/public")))
            (when-not (fs/exists? loki-ds)
              (fs/create-sym-link loki-ds (fs/absolutize "./config/provisioning-loki.yaml")))
-           (p/shell "grafana" "server" "-homepath" "./tmp/grafana" "-config" "./config/grafana.ini"))}}}
+           (p/shell "grafana" "server" "-homepath" "./tmp/grafana" "-config" "./config/grafana.ini"))}
+
+  publish
+  {:doc "Build and publish to Maven repository"
+   :depends [build]
+   :task (do
+           (println "Publishing to Maven repository...")
+           (println "Make sure you have set the following environment variables:")
+           (println "  CLOJARS_USERNAME - Your Clojars username")
+           (println "  CLOJARS_PASSWORD - Your Clojars password/token")
+           (println "")
+           (let [result (p/shell {:continue true}
+                                 "clojure" "-X:deploy" ":artifact" "target/edn-json-encoder-0.1.0.jar")]
+             (if (= 0 (:exit result))
+               (println "✓ Successfully published to Maven repository!")
+               (do
+                 (println "✗ Publication failed. Please check your credentials and try again.")
+                 (throw (ex-info "Publication failed" result))))))}}}}

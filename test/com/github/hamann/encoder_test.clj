@@ -1,4 +1,4 @@
-(ns logback.encoder-test
+(ns com.github.hamann.encoder-test
   (:require [clojure.test :refer [deftest testing is]]
             [cheshire.core :as json]
             [clojure.java.io :as io])
@@ -7,16 +7,16 @@
            [java.util HashMap]))
 
 (when-not (try
-            (Class/forName "logback.EdnToJsonEncoder")
+            (Class/forName "com.github.hamann.EdnToJsonEncoder")
             true
             (catch ClassNotFoundException _ false))
   (println "EdnToJsonEncoder not found, attempting to compile...")
   (binding [*compile-path* "target/classes"]
     (io/make-parents "target/classes/dummy.txt")
-    (compile 'logback.edn-json-encoder))
+    (compile 'com.github.hamann.edn-json-encoder))
   (println "Compilation completed"))
 
-(import '[logback EdnToJsonEncoder])
+(import '[com.github.hamann EdnToJsonEncoder])
 
 (defn create-test-event
   "Creates a simple LoggingEvent for tests"

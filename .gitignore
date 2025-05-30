@@ -6,3 +6,5 @@
 .nrepl-port
 target/
 tmp/
+
+**/.claude/settings.local.json

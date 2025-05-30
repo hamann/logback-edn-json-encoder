@@ -1,4 +1,4 @@
-(ns logback.edn-json-encoder
+(ns com.github.hamann.edn-json-encoder
   (:require [clojure.edn :as edn]
             [cheshire.core :as json]
             [clojure.string :as str]
@@ -9,7 +9,7 @@
            [java.nio.charset StandardCharsets]))
 
 (gen-class
-  :name logback.EdnToJsonEncoder
+  :name com.github.hamann.EdnToJsonEncoder
   :extends ch.qos.logback.core.encoder.EncoderBase
   :methods [[encode [ch.qos.logback.classic.spi.ILoggingEvent] "[B"]
             [isPreserveOriginals [] Boolean]

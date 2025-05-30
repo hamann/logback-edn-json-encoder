@@ -7,6 +7,10 @@
  :aliases {:build {:deps {io.github.clojure/tools.build {:mvn/version "0.10.7"}}
                    :ns-default build}
 
+           :deploy {:deps {slipset/deps-deploy {:mvn/version "0.2.2"}}
+                    :exec-fn deps-deploy.deps-deploy/deploy
+                    :exec-args {:installer :remote}}
+
            :test {:extra-paths ["test" "target/classes"]
                   :extra-deps {lambdaisland/kaocha {:mvn/version "1.87.1366"}
                                lambdaisland/kaocha-cloverage {:mvn/version "1.1.89"}}
