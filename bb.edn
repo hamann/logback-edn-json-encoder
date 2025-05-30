@@ -122,11 +122,15 @@
 
                (println "✓ Credentials decrypted successfully")
 
+               ;; Copy POM file to expected location
+               (fs/copy "target/classes/META-INF/maven/com.github.hamann/edn-json-encoder/pom.xml" "pom.xml")
+
                ;; Set environment variables and run deploy
                (let [result (p/shell {:continue true
                                       :extra-env {"CLOJARS_USERNAME" username
                                                   "CLOJARS_PASSWORD" password}}
-                                     "clojure" "-X:deploy" ":artifact" "target/edn-json-encoder-0.1.0.jar")]
+                                     "clojure" "-X:deploy" 
+                                     ":artifact" "target/edn-json-encoder-0.1.0.jar")]
                  (if (= 0 (:exit result))
                    (println "✓ Successfully published to Maven repository!")
                    (do

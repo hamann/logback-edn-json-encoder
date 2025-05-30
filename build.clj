@@ -38,11 +38,21 @@
                 :version version
                 :basis @basis
                 :src-dirs ["src"]
-                :scm (:scm pom-data)
-                :description (:description pom-data)
-                :url (:url pom-data)
-                :licenses (:licenses pom-data)
-                :developers (:developers pom-data)})
+                :pom-data [[:description (:description pom-data)]
+                           [:url (:url pom-data)]
+                           [:licenses 
+                            [:license
+                             [:name "Eclipse Public License 2.0"]
+                             [:url "https://www.eclipse.org/legal/epl-2.0/"]]]
+                           [:developers
+                            [:developer
+                             [:name "Holger Amann"]
+                             [:email "holger.amann@mailbox.org"]]]
+                           [:scm
+                            [:url (:url (:scm pom-data))]
+                            [:connection (:connection (:scm pom-data))]
+                            [:developerConnection (:developer-connection (:scm pom-data))]
+                            [:tag (:tag (:scm pom-data))]]]})
   (b/copy-dir {:src-dirs ["src" "resources"]
                :target-dir class-dir})
   (b/jar {:class-dir class-dir
