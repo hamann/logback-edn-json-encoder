@@ -14,14 +14,14 @@
    :artifact-id "edn-json-encoder"
    :version version
    :description "A Logback encoder that converts EDN format logs to JSON for better integration with log aggregation systems"
-   :url "https://github.com/hamann/edn-to-json-encoder"
+   :url "https://github.com/hamann/logback-edn-json-encoder"
    :licenses [{:name "Eclipse Public License 2.0"
                :url "https://www.eclipse.org/legal/epl-2.0/"}]
    :developers [{:name "Holger Amann"
                  :email "holger.amann@mailbox.org"}]
-   :scm {:url "https://github.com/hamann/edn-to-json-encoder"
-         :connection "scm:git:git://github.com/hamann/edn-to-json-encoder.git"
-         :developer-connection "scm:git:ssh://git@github.com/hamann/edn-to-json-encoder.git"
+   :scm {:url "https://github.com/hamann/logback-edn-json-encoder"
+         :connection "scm:git:git://github.com/hamann/logback-edn-json-encoder.git"
+         :developer-connection "scm:git:ssh://git@github.com/hamann/logback-edn-json-encoder.git"
          :tag version}})
 
 (defn clean [_]
@@ -40,7 +40,7 @@
                 :src-dirs ["src"]
                 :pom-data [[:description (:description pom-data)]
                            [:url (:url pom-data)]
-                           [:licenses 
+                           [:licenses
                             [:license
                              [:name "Eclipse Public License 2.0"]
                              [:url "https://www.eclipse.org/legal/epl-2.0/"]]]
