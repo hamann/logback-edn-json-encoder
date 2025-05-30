@@ -24,13 +24,13 @@ cd logback-edn-json-encoder
 # Build the JAR
 bb build
 
-# The encoder JAR will be in target/edn-json-encoder-0.1.0.jar
+# The encoder JAR will be in target/edn-json-encoder-0.1.1.jar
 ```
 
 ### 2. Add to deps.end
 
 ```clojure
-{:deps {com.github.hamann/edn-json-encoder {:mvn/version "0.1.0"}}}
+{:deps {com.github.hamann/edn-json-encoder {:mvn/version "0.1.1"}}}
 ```
 
 ### 3. Configure Logback
@@ -201,7 +201,7 @@ This project includes a `bb publish` task for publishing to Maven repositories (
 
 4. **Update project metadata** in `build.clj` if needed:
    - `group-id` and `artifact-id` (currently `com.github.hamann/edn-json-encoder`)
-   - `version` (currently `0.1.0`)
+   - `version` (currently `0.1.1`)
    - `url` and SCM URLs (currently pointing to `github.com/hamann/edn-to-json-encoder`)
    - Developer information
 
@@ -223,7 +223,7 @@ The publish task will:
 Once published, users can add it to their `deps.edn`:
 
 ```clojure
-{:deps {com.github.hamann/edn-json-encoder {:mvn/version "0.1.0"}}}
+{:deps {com.github.hamann/edn-json-encoder {:mvn/version "0.1.1"}}}
 ```
 
 Or include the JAR in their Java classpath for Logback configuration.
