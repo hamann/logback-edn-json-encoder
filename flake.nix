@@ -1,6 +1,6 @@
 {
   inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-24.05";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11";
   outputs = {
     nixpkgs,
     flake-utils,
@@ -14,9 +14,9 @@
     in {
       devShell = pkgs.mkShell {
         packages = with pkgs; [
-          graalvm-ce
+          graalvmPackages.graalvm-ce
           babashka
-          (clojure.override {jdk = graalvm-ce;})
+          (clojure.override {jdk = graalvmPackages.graalvm-ce;})
           grafana-loki
           grafana
           promtail
