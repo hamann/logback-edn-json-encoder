@@ -58,20 +58,24 @@
 (defn extract-full-exception-chain
   "Extracts complete exception chain with all causes and stack traces"
   [throwable-proxy]
-  (loop [current throwable-proxy
-         chain []
-         visited #{}]
-    (if (and current (not (contains? visited (.getClassName current))))
-      (let [class-name (.getClassName current)
-            exception-info {:class class-name
-                            :message (.getMessage current)
-                            :stack_trace (->> (.getStackTraceElementProxyArray current)
-                                            (map #(str (.toString (.getStackTraceElement %))))
-                                            vec)}]
-        (recur (.getCause current)
-               (conj chain exception-info)
-               (conj visited class-name)))
-      chain)))
+  (let [seen (java.util.IdentityHashMap.)]
+    (loop [current throwable-proxy
+           chain []]
+      (if (and current (not (.containsKey seen current)))
+        (do
+          (.put seen current true)
+          (let [stack-array (.getStackTraceElementProxyArray current)
+                exception-info {:class (.getClassName current)
+                                :message (.getMessage current)
+                                :stack_trace (when stack-array
+                                               (->> stack-array
+                                                    (keep (fn [proxy]
+                                                            (when-let [ste (.getStackTraceElement proxy)]
+                                                              (str ste))))
+                                                    vec))}]
+            (recur (.getCause current)
+                   (conj chain exception-info))))
+        chain))))
 
 (defn extract-exception-info
   "Extracts exception information with full stack traces"
@@ -102,7 +106,7 @@
               (str/starts-with? trimmed "#{")
               (str/starts-with? trimmed "#inst")
               (str/starts-with? trimmed "#uuid"))
-          (edn/read-string trimmed)
+          (edn/read-string {:default (fn [_tag val] val)} trimmed)
 
           (str/starts-with? trimmed ":")
           (edn/read-string trimmed)
@@ -119,7 +123,7 @@
     (if (and (string? message)
              (str/starts-with? (str/trim message) "{")
              (str/ends-with? (str/trim message) "}"))
-      (assoc (edn/read-string message) :edn_parsed true)
+      (assoc (edn/read-string {:default (fn [_tag val] val)} message) :edn_parsed true)
       {:message message :edn_parsed false})
     (catch Exception e
       {:message message

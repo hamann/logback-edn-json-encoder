@@ -1,7 +1,8 @@
 (ns com.github.hamann.encoder-test
   (:require [clojure.test :refer [deftest testing is]]
             [cheshire.core :as json]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [com.github.hamann.edn-json-encoder :as enc])
   (:import [ch.qos.logback.classic Level LoggerContext]
            [ch.qos.logback.classic.spi LoggingEvent]
            [java.util HashMap]))
@@ -342,3 +343,113 @@
         (let [original-mdc (:_original_mdc parsed)]
           (is (= "12345" (:user-id original-mdc)))
           (is (= "{:name \"Alice\" :age 30}" (:user-data original-mdc))))))))
+
+;; --- Bug fix: cycle detection used class names, so the same class appearing
+;; multiple times in a chain caused subsequent causes to be silently dropped ---
+
+(deftest exception-chain-with-repeated-class-test
+  (testing "All causes are captured even when the same exception class appears multiple times"
+    (let [encoder (EdnToJsonEncoder.)
+          logger-context (LoggerContext.)
+          root (RuntimeException. "root cause")
+          middle (RuntimeException. "middle cause" root)
+          main (RuntimeException. "main exception" middle)
+          event (create-test-event-with-exception "test" Level/ERROR "Error" main)]
+
+      (.setContext encoder logger-context)
+      (.start encoder)
+
+      (let [parsed (json/parse-string (String. (.encode encoder event) "UTF-8") keyword)
+            ex (:exception parsed)]
+
+        (is (= "java.lang.RuntimeException" (:exception_class ex)))
+        (is (= "main exception" (:exception_message ex)))
+        (is (= 2 (count (:causes ex))) "Both causes must be present despite sharing the same class")
+        (is (= "middle cause" (get-in ex [:causes 0 :message])))
+        (is (= "root cause" (get-in ex [:causes 1 :message])))))))
+
+;; --- Bug fix: getStackTraceElement() can return null for certain frames,
+;; previously causing NPE that was swallowed, resulting in no exception output ---
+
+(deftest exception-stack-trace-is-present-test
+  (testing "stack_trace is captured and non-empty for ordinary exceptions"
+    (let [encoder (EdnToJsonEncoder.)
+          logger-context (LoggerContext.)
+          ex (RuntimeException. "boom")
+          event (create-test-event-with-exception "test" Level/ERROR "Error" ex)]
+
+      (.setContext encoder logger-context)
+      (.start encoder)
+
+      (let [parsed (json/parse-string (String. (.encode encoder event) "UTF-8") keyword)
+            exception (:exception parsed)]
+
+        (is (not (contains? parsed :exception_error))
+            "Should not fall back to exception_error - no NPE should occur")
+        (is (vector? (:stack_trace exception)))
+        (is (pos? (count (:stack_trace exception))))))))
+
+;; --- Bug fix: unknown EDN tagged literals (e.g. #Interceptor{...}) caused
+;; parse failure and edn_parse_error appearing in the output ---
+
+(deftest edn-message-with-unknown-tagged-literal-test
+  (testing "EDN message with unknown tagged literals is parsed without edn_parse_error"
+    (let [encoder (EdnToJsonEncoder.)
+          logger-context (LoggerContext.)
+          event (create-test-event "test" Level/ERROR
+                                   "{:interceptor #MyTag{:name :foo/bar} :status :error}")]
+
+      (.setContext encoder logger-context)
+      (.start encoder)
+
+      (let [parsed (json/parse-string (String. (.encode encoder event) "UTF-8") keyword)]
+
+        (is (= true (:edn_parsed parsed)))
+        (is (not (contains? parsed :edn_parse_error)))
+        (is (= "error" (:status parsed)))
+        (is (map? (:interceptor parsed)))
+        (is (= "foo/bar" (get-in parsed [:interceptor :name])))))))
+
+(deftest mdc-with-unknown-tagged-literal-test
+  (testing "MDC values with unknown tagged literals are parsed gracefully"
+    (let [encoder (EdnToJsonEncoder.)
+          logger-context (LoggerContext.)
+          mdc-data {"queue" "[:a #MyTag{:name :foo} :b]"}
+          event (create-test-event-with-mdc "test" Level/INFO "msg" mdc-data)]
+
+      (.setContext encoder logger-context)
+      (.start encoder)
+
+      (let [parsed (json/parse-string (String. (.encode encoder event) "UTF-8") keyword)
+            queue (get-in parsed [:mdc :queue])]
+
+        (is (vector? queue))
+        (is (= "a" (first queue)))
+        (is (= "b" (last queue)))
+        (is (map? (second queue)) "Tagged literal value should be preserved as a map")))))
+
+;; --- Unit tests for internal parsing functions ---
+
+(deftest parse-edn-safely-unknown-tags-test
+  (testing "unknown tagged literals are parsed without error"
+    (let [result (enc/parse-edn-safely "{:a #Foo{:x 1} :b 2}")]
+      (is (= true (:edn_parsed result)))
+      (is (not (contains? result :edn_parse_error)))
+      (is (= 2 (:b result)))
+      (is (map? (:a result)))))
+
+  (testing "truly non-EDN content still falls back with edn_parse_error"
+    (let [result (enc/parse-edn-safely "{:db datomic.db.Db@839ec8fd}")]
+      (is (= false (:edn_parsed result)))
+      (is (contains? result :edn_parse_error)))))
+
+(deftest parse-edn-value-safely-unknown-tags-test
+  (testing "unknown tagged literals in maps are parsed"
+    (let [result (enc/parse-edn-value-safely "{:interceptor #Foo{:name :bar}}")]
+      (is (map? result))
+      (is (map? (:interceptor result)))))
+
+  (testing "unknown tagged literals in vectors are parsed"
+    (let [result (enc/parse-edn-value-safely "[#Foo{:a 1} #Foo{:a 2}]")]
+      (is (vector? result))
+      (is (= 2 (count result))))))
