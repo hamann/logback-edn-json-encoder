@@ -92,6 +92,15 @@
       (catch Exception e
         {:exception_error (.getMessage e)}))))
 
+(def ^:private edn-opts {:default (fn [_tag val] val)})
+
+(defn- sanitize-for-edn
+  "Quotes Java object references and hex literals that are invalid EDN tokens"
+  [s]
+  (-> s
+      (str/replace #"[A-Za-z][\w.$]*@[0-9a-fA-F]+" #(str "\"" % "\""))
+      (str/replace #"0x[0-9a-fA-F]+"                #(str "\"" % "\""))))
+
 (defn parse-edn-value-safely
   "Tries to parse a string as EDN"
   [value]
@@ -106,7 +115,8 @@
               (str/starts-with? trimmed "#{")
               (str/starts-with? trimmed "#inst")
               (str/starts-with? trimmed "#uuid"))
-          (edn/read-string {:default (fn [_tag val] val)} trimmed)
+          (or (try (edn/read-string edn-opts trimmed) (catch Exception _e nil))
+              (edn/read-string edn-opts (sanitize-for-edn trimmed)))
 
           (str/starts-with? trimmed ":")
           (edn/read-string trimmed)
@@ -119,16 +129,14 @@
 (defn parse-edn-safely
   "Safely parse EDN string, returning structured data or error info"
   [message]
-  (try
-    (if (and (string? message)
-             (str/starts-with? (str/trim message) "{")
-             (str/ends-with? (str/trim message) "}"))
-      (assoc (edn/read-string {:default (fn [_tag val] val)} message) :edn_parsed true)
-      {:message message :edn_parsed false})
-    (catch Exception e
-      {:message message
-       :edn_parse_error (.getMessage e)
-       :edn_parsed false})))
+  (or (when (and (string? message)
+                 (str/starts-with? (str/trim message) "{")
+                 (str/ends-with? (str/trim message) "}"))
+        (or (try (assoc (edn/read-string edn-opts message) :edn_parsed true)
+                 (catch Exception _e nil))
+            (try (assoc (edn/read-string edn-opts (sanitize-for-edn message)) :edn_parsed true)
+                 (catch Exception _e nil))))
+      {:message message :edn_parsed false}))
 
 (defn safe-get-mdc-with-edn-parsing
   "Gets MDC context and parses it"

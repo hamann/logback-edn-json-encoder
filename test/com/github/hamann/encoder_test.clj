@@ -438,10 +438,15 @@
       (is (= 2 (:b result)))
       (is (map? (:a result)))))
 
-  (testing "truly non-EDN content still falls back with edn_parse_error"
+  (testing "Java object references are sanitized and parsed on retry"
     (let [result (enc/parse-edn-safely "{:db datomic.db.Db@839ec8fd}")]
+      (is (= true (:edn_parsed result)))
+      (is (= "datomic.db.Db@839ec8fd" (:db result)))))
+
+  (testing "truly unparseable content falls back gracefully"
+    (let [result (enc/parse-edn-safely "{:odd-number-of-keys}")]
       (is (= false (:edn_parsed result)))
-      (is (contains? result :edn_parse_error)))))
+      (is (string? (:message result))))))
 
 (deftest parse-edn-value-safely-unknown-tags-test
   (testing "unknown tagged literals in maps are parsed"
