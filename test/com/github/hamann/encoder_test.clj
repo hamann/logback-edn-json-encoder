@@ -458,3 +458,54 @@
     (let [result (enc/parse-edn-value-safely "[#Foo{:a 1} #Foo{:a 2}]")]
       (is (vector? result))
       (is (= 2 (count result))))))
+
+(deftest sanitize-leaves-string-literals-alone-test
+  (testing "hex string literals are not rewritten when the fallback runs"
+    (let [result (enc/parse-edn-safely "{:id \"0xff\" :obj Foo@1a2b}")]
+      (is (= true (:edn_parsed result)))
+      (is (= "0xff" (:id result)))
+      (is (= "Foo@1a2b" (:obj result)))
+      (is (= #{:id :obj :edn_parsed} (set (keys result))))))
+
+  (testing "email addresses inside strings survive the fallback"
+    (let [result (enc/parse-edn-safely "{:email \"joe@acme.com\" :obj Foo@1a2b}")]
+      (is (= true (:edn_parsed result)))
+      (is (= "joe@acme.com" (:email result)))
+      (is (= "Foo@1a2b" (:obj result)))))
+
+  (testing "strings with escaped quotes are skipped as a whole"
+    (let [result (enc/parse-edn-safely "{:s \"say \\\"a@b\\\" 0x1\" :obj Foo@1a2b}")]
+      (is (= true (:edn_parsed result)))
+      (is (= "say \"a@b\" 0x1" (:s result)))))
+
+  (testing "0x inside a symbol is not split"
+    (let [result (enc/parse-edn-safely "{:a abc0x1f :obj Foo@1a2b}")]
+      (is (= true (:edn_parsed result)))
+      (is (= 'abc0x1f (:a result)))
+      (is (= "Foo@1a2b" (:obj result)))))
+
+  (testing "#object hex addresses and Java refs are still quoted"
+    (let [result (enc/parse-edn-safely
+                  "{:span #object[io.SdkSpan 0x4d1c00d0 \"io.SdkSpan@4d1c00d0\"] :inner a.B$C@ff}")]
+      (is (= true (:edn_parsed result)))
+      (is (= ['io.SdkSpan "0x4d1c00d0" "io.SdkSpan@4d1c00d0"] (:span result)))
+      (is (= "a.B$C@ff" (:inner result))))))
+
+(deftest trailing-content-is-not-dropped-test
+  (testing "message with content after the first form stays unparsed"
+    (let [msg "{:a 1} lost {:b 2}"
+          result (enc/parse-edn-safely msg)]
+      (is (= false (:edn_parsed result)))
+      (is (= msg (:message result)))))
+
+  (testing "trailing whitespace is fine"
+    (is (= true (:edn_parsed (enc/parse-edn-safely "{:a 1}  \n")))))
+
+  (testing "MDC keyword value with trailing text is kept as a string"
+    (is (= ":user-id was missing" (enc/parse-edn-value-safely ":user-id was missing"))))
+
+  (testing "plain keyword MDC value is still parsed"
+    (is (= :committed (enc/parse-edn-value-safely ":committed"))))
+
+  (testing "MDC collection value with trailing text is kept as a string"
+    (is (= "[1 2] and more" (enc/parse-edn-value-safely "[1 2] and more")))))

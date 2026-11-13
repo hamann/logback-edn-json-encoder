@@ -92,14 +92,33 @@
       (catch Exception e
         {:exception_error (.getMessage e)}))))
 
-(def ^:private edn-opts {:default (fn [_tag val] val)})
+(def ^:private edn-opts {:default (fn [_tag val] val) :eof ::eof})
+
+(defn- read-edn-fully
+  "Reads exactly one EDN form from `s`. Throws if `s` is empty or has
+  anything besides whitespace after the first form, so trailing content
+  is never silently dropped."
+  [^String s]
+  (let [rdr (java.io.PushbackReader. (java.io.StringReader. s))
+        v (edn/read edn-opts rdr)]
+    (when (= ::eof v)
+      (throw (ex-info "No EDN form found" {})))
+    (when-not (= ::eof (edn/read edn-opts rdr))
+      (throw (ex-info "Trailing content after EDN form" {})))
+    v))
+
+(def ^:private sanitize-pattern
+  ;; Alternation order matters: string literals are matched first and left
+  ;; untouched, so `@`/`0x` inside strings are never rewritten. The
+  ;; lookarounds keep matches to whole tokens (no `abc0x1f` splitting).
+  #"\"(?:\\.|[^\"\\])*\"|(?<![\w.$])[A-Za-z][\w.$]*@[0-9a-fA-F]+(?![\w.$@])|(?<![\w.$])0x[0-9a-fA-F]+(?![\w.$])")
 
 (defn- sanitize-for-edn
-  "Quotes Java object references and hex literals that are invalid EDN tokens"
+  "Quotes Java object references and hex literals that are invalid EDN tokens.
+  Existing string literals are left unchanged."
   [s]
-  (-> s
-      (str/replace #"[A-Za-z][\w.$]*@[0-9a-fA-F]+" #(str "\"" % "\""))
-      (str/replace #"0x[0-9a-fA-F]+"                #(str "\"" % "\""))))
+  (str/replace s sanitize-pattern
+               (fn [m] (if (str/starts-with? m "\"") m (str "\"" m "\"")))))
 
 (defn parse-edn-value-safely
   "Tries to parse a string as EDN"
@@ -115,11 +134,11 @@
               (str/starts-with? trimmed "#{")
               (str/starts-with? trimmed "#inst")
               (str/starts-with? trimmed "#uuid"))
-          (or (try (edn/read-string edn-opts trimmed) (catch Exception _e nil))
-              (edn/read-string edn-opts (sanitize-for-edn trimmed)))
+          (or (try (read-edn-fully trimmed) (catch Exception _e nil))
+              (read-edn-fully (sanitize-for-edn trimmed)))
 
           (str/starts-with? trimmed ":")
-          (edn/read-string trimmed)
+          (read-edn-fully trimmed)
 
           :else value))
       (catch Exception _e
@@ -132,9 +151,9 @@
   (or (when (and (string? message)
                  (str/starts-with? (str/trim message) "{")
                  (str/ends-with? (str/trim message) "}"))
-        (or (try (assoc (edn/read-string edn-opts message) :edn_parsed true)
+        (or (try (assoc (read-edn-fully message) :edn_parsed true)
                  (catch Exception _e nil))
-            (try (assoc (edn/read-string edn-opts (sanitize-for-edn message)) :edn_parsed true)
+            (try (assoc (read-edn-fully (sanitize-for-edn message)) :edn_parsed true)
                  (catch Exception _e nil))))
       {:message message :edn_parsed false}))
 
